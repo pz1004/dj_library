@@ -44,9 +44,7 @@
         <textarea id="keywords" name="keywords" rows="4" cols="50" required></textarea>
         <br><br>
         <label>도서관 선택:</label><br>
-        {% for library in libraries %}
-            <input type="checkbox" name="libraries" value="{{ library }}">{{ library }}<br>
-        {% endfor %}
+        <div id="library-list"></div>
         <br>
         <button type="submit">검색</button>
     </form>
@@ -55,5 +53,65 @@
         <h2>검색 결과</h2>
         <div class="results">{{ results|safe }}</div>
     {% endif %}
+
+    <script>
+        // JSON 파일을 읽어오는 함수
+        async function fetchLibraryList() {
+            const response = await fetch('static/lib_list.json');
+            const libList = await response.json();
+            createCheckboxes(libList);
+        }
+
+        // HTML 요소 생성 함수
+        function createCheckboxes(libList) {
+            const container = document.getElementById('library-list');
+            for (const region in libList) {
+                const regionDiv = document.createElement('div');
+                const regionTitle = document.createElement('h3');
+                regionTitle.textContent = region;
+                regionDiv.appendChild(regionTitle);
+
+                // "Select All" checkbox
+                const selectAllCheckbox = document.createElement('input');
+                selectAllCheckbox.type = 'checkbox';
+                selectAllCheckbox.id = `${region}-select-all`;
+                selectAllCheckbox.addEventListener('change', (event) => {
+                    const checkboxes = regionDiv.querySelectorAll('input[type="checkbox"]');
+                    checkboxes.forEach(checkbox => {
+                        checkbox.checked = event.target.checked;
+                    });
+                });
+
+                const selectAllLabel = document.createElement('label');
+                selectAllLabel.htmlFor = `${region}-select-all`;
+                selectAllLabel.textContent = '전체 선택';
+
+                regionDiv.appendChild(selectAllCheckbox);
+                regionDiv.appendChild(selectAllLabel);
+                
+
+                const libraries = libList[region];
+                for (const library in libraries) {
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = libraries[library];
+                    checkbox.name = 'libraries';
+                    checkbox.value = libraries[library];
+
+                    const label = document.createElement('label');
+                    label.htmlFor = libraries[library];
+                    label.textContent = library;
+
+                    regionDiv.appendChild(checkbox);
+                    regionDiv.appendChild(label);
+                    
+                }
+                container.appendChild(regionDiv);
+            }
+        }
+
+        // JSON 데이터 가져오기 및 체크박스 생성
+        fetchLibraryList();
+    </script>
 </body>
 </html>

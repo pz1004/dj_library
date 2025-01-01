@@ -1,11 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-import lib_list
 import argparse
+import json
 
 
-def fetch_books(keyword, library=None):
+def fetch_books(keyword, library_code=None):
     # API 요청 URL
     base_url = "https://www.u-library.kr/search/tot/result?st=KWRD"
     base_url += f"&q={keyword}"
@@ -16,9 +16,8 @@ def fetch_books(keyword, library=None):
     # TOTAL: 전체, 1: 서명, 2: 저자, 3: 출판사, 4: 주제어
     base_url += "&si=1"
 
-    if library:
-        base_url += f"&bk_8={lib_list.lib_code[library]}"
-
+    if library_code:
+        base_url += f"&bk_8={library_code}"
     # API 요청
     response = requests.get(base_url)
     if response.status_code != 200:
@@ -64,13 +63,14 @@ def fetch_books(keyword, library=None):
 
     # DataFrame으로 변환
     books_df = pd.DataFrame(books)
+    print(books_df.head())
 
     # 대출 가능 도서만 필터링
     available_books = books_df[books_df['대출 가능 여부'] == '대출가능']
     return available_books
 
 
-def create_total_search_result(keywords, library=None):
+def create_total_search_result(keywords, library_codes=None):
     all_data = []
 
     if keywords is None:
@@ -78,9 +78,17 @@ def create_total_search_result(keywords, library=None):
             keywords = f.readlines()
             keywords = [keyword.strip() for keyword in keywords]
 
-    for keyword in keywords:
-        df = fetch_books(keyword)
-        all_data.append(df)
+    if library_codes is None:
+        for keyword in keywords:
+            df = fetch_books(keyword)
+            all_data.append(df)
+    else:
+        if isinstance(library_codes, str):
+            library_codes = [library_codes]
+        for library_code in library_codes:
+            for keyword in keywords:
+                df = fetch_books(keyword, library_code)
+                all_data.append(df)
 
     # 모든 검색 결과를 하나의 DataFrame으로 합침
     combined_df = pd.concat(all_data, ignore_index=True)
@@ -106,5 +114,11 @@ if __name__ == '__main__':
     parser.add_argument('--lib', default=None, type=str, help='도서관명')
     parser.add_argument('--key', nargs="+", default=None, type=str, help='검색 키워드')
     args = parser.parse_args()
-    library = lib_list.lib_code.get(args.lib, None)
-    create_total_search_result(args.key, args.lib)
+    with open("lib_list.json", "r", encoding='utf-8') as f:
+        json_data = json.load(f)
+    for key, value in json_data.items():
+        a = value.get(args.lib)
+        if a:
+            print(key, a)
+            break
+    create_total_search_result(args.key, a)
