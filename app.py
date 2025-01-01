@@ -4,9 +4,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from typing import List, Optional
 from pydantic import BaseModel
-import pandas as pd
 import json
-from main import fetch_books, create_total_search_result
+from main import create_total_search_result
 
 app = FastAPI()
 
@@ -45,7 +44,8 @@ async def search_books(
         "index.html",
         {
             "request": request,
-            "results": results.to_html(index=False).replace('<td>', '<td class="left-align">', 1),
+            "results": results.to_html(
+                index=False).replace('<td>', '<td class="left-align">', 1),
             "libraries": lib_list.keys(),
         },
     )

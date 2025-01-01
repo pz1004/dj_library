@@ -48,7 +48,8 @@ def fetch_books(keyword, library_code=None):
         if library_tag:
             library = library_tag.text.strip()
             loan_status_tag = library_tag.find('span', class_='availableBtn')
-            loan_status = loan_status_tag.text.strip() if loan_status_tag else '정보 없음'
+            loan_status = loan_status_tag.text.strip() if loan_status_tag \
+                else '정보 없음'
             library = library.replace(loan_status, '')
         else:
             library = '정보 없음'
@@ -103,7 +104,8 @@ def create_total_search_result(keywords, library_codes=None):
         .reset_index()
         .sort_values(by='개수', ascending=False)
     )
-    total_search_result.rename(columns={'도서관명': '도서관', '대출_가능_도서': '대출 가능 도서'}, inplace=True)
+    total_search_result.rename(columns={'도서관명': '도서관', 
+                                        '대출_가능_도서': '대출 가능 도서'}, inplace=True)
 
     print(total_search_result)
     return total_search_result
@@ -112,7 +114,7 @@ def create_total_search_result(keywords, library_codes=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='도서관 도서 대출 가능 여부 확인')
     parser.add_argument('--lib', default=None, type=str, help='도서관명')
-    parser.add_argument('--key', nargs="+", default=None, type=str, help='검색 키워드')
+    parser.add_argument('--key', nargs="+", default=None, type=str, help='검색어')
     args = parser.parse_args()
     with open("lib_list.json", "r", encoding='utf-8') as f:
         json_data = json.load(f)
