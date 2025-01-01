@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>도서 검색</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        form {
+            text-align: center;
+        }
+        .results {
+            margin-top: 20px;
+            width: 80%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center; /* Center align text in table headers and cells */
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .left-align {
+            text-align: left; /* Left align text in specific column */
+        }
+    </style>
+</head>
+<body>
+    <h1>도서 검색</h1>
+    <form method="POST" action="/search">
+        <label for="keywords">키워드:</label>
+        <textarea id="keywords" name="keywords" rows="4" cols="50" required></textarea>
+        <br><br>
+        <label>도서관 선택:</label><br>
+        {% for library in libraries %}
+            <input type="checkbox" name="libraries" value="{{ library }}">{{ library }}<br>
+        {% endfor %}
+        <br>
+        <button type="submit">검색</button>
+    </form>
+    <br>
+    {% if results %}
+        <h2>검색 결과</h2>
+        <div class="results">{{ results|safe }}</div>
+    {% endif %}
+</body>
+</html>
