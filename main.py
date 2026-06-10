@@ -19,7 +19,7 @@ def fetch_books(keyword, library_code=None):
     if library_code:
         base_url += f"&bk_8={library_code}"
     # API 요청
-    response = requests.get(base_url)
+    response = requests.get(base_url, timeout=15)
     if response.status_code != 200:
         print(f"API 요청 실패: {response.status_code}")
         return pd.DataFrame()
@@ -36,6 +36,8 @@ def fetch_books(keyword, library_code=None):
     for li in li_tags:
         # 제목 가져오기
         title_tag = li.find('dd', class_='dataCheck')
+        if title_tag is None:
+            continue
         input_tag = title_tag.find('input', {'name': 'data'})
         if input_tag and 'title' in input_tag.attrs:
             title = input_tag['title']
