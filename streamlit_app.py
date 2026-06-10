@@ -10,21 +10,20 @@ with open("lib_list.json", "r", encoding="utf-8") as f:
     lib_list = json.load(f)
 
 # 첫 로딩 시 세션 상태 초기화
-for region, libraries in lib_list.items():
+for libraries in lib_list.values():
     for lib_code in libraries.values():
-        key = f"lib_{lib_code}"
-        if key not in st.session_state:
-            st.session_state[key] = False
+        st.session_state.setdefault(f"lib_{lib_code}", False)
 
-if "raw_results" not in st.session_state:
-    st.session_state["raw_results"] = None
+st.session_state.setdefault("raw_results", None)
 
 
-def toggle_region(libraries: dict) -> None:
+def toggle_region(libraries: dict[str, str]) -> None:
     """Toggle all checkboxes in a region: select all if any is unselected, else deselect all."""
-    all_selected = all(st.session_state.get(f"lib_{code}", False) for code in libraries.values())
-    for lib_code in libraries.values():
-        st.session_state[f"lib_{lib_code}"] = not all_selected
+    codes = list(libraries.values())
+    all_selected = all(st.session_state.get(f"lib_{code}", False) for code in codes)
+    new_value = not all_selected
+    for code in codes:
+        st.session_state[f"lib_{code}"] = new_value
 
 
 # ── Keywords input ──────────────────────────────────────────────────────────
@@ -103,16 +102,15 @@ if raw is not None:
         st.info("대출 가능한 도서가 없습니다." if available_only else "검색 결과가 없습니다.")
     else:
         grouped = (
-            df.groupby('도서관명')
-            .agg(개수=('제목', 'count'), 도서_목록=('제목', list))
+            df.groupby("도서관명", sort=True)
+            .agg(개수=("제목", "count"), 도서_목록=("제목", list))
             .reset_index()
-            .sort_values(by='도서관명', ascending=True)
         )
         label = "대출가능" if available_only else "전체"
-        total_books = int(grouped['개수'].sum())
+        total_books = int(grouped["개수"].sum())
         st.subheader(f"검색 결과 ({label}) — {total_books}권 / {len(grouped)}개 도서관")
-        for _, row in grouped.iterrows():
-            with st.expander(f"{row['도서관명']} — {row['개수']}권"):
-                for title in row['도서_목록']:
+        for row in grouped.itertuples(index=False):
+            with st.expander(f"{row.도서관명} — {row.개수}권"):
+                for title in row.도서_목록:
                     st.write(f"- {title}")
 
