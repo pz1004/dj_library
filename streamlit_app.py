@@ -106,7 +106,7 @@ if raw is not None:
             df.groupby('도서관명')
             .agg(개수=('제목', 'count'), 도서_목록=('제목', list))
             .reset_index()
-            .sort_values(by='개수', ascending=False)
+            .sort_values(by='도서관명', ascending=True)
         )
         label = "대출가능" if available_only else "전체"
         total_books = int(grouped['개수'].sum())
