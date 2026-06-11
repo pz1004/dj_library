@@ -55,7 +55,7 @@ for i, (region, libraries) in enumerate(regions):
 selected_codes = [
     lib_code
     for libraries in lib_list.values()
-    for lib_name, lib_code in libraries.items()
+    for _, lib_code in libraries.items()
     if st.session_state.get(f"lib_{lib_code}", False)
 ]
 
@@ -103,7 +103,7 @@ if raw is not None:
     else:
         grouped = (
             df.groupby("도서관명", sort=True)
-            .agg(개수=("제목", "count"), 도서_목록=("제목", list))
+            .agg(개수=("제목", "count"), 도서_목록=("제목", list), 청구기호_목록=("청구기호", list))
             .reset_index()
         )
         label = "대출가능" if available_only else "전체"
@@ -111,6 +111,6 @@ if raw is not None:
         st.subheader(f"검색 결과 ({label}) — {total_books}권 / {len(grouped)}개 도서관")
         for row in grouped.itertuples(index=False):
             with st.expander(f"{row.도서관명} — {row.개수}권"):
-                for title in row.도서_목록:
-                    st.write(f"- {title}")
+                for title, call_number in sorted(zip(row.도서_목록, row.청구기호_목록)):
+                    st.write(f"- {title} — `{call_number}`")
 

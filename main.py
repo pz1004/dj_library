@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import argparse
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
 _BASE_URL = "https://www.u-library.kr/search/tot/result"
-_COLUMNS = ["제목", "도서관명", "대출 가능 여부"]
+_COLUMNS = ["제목", "청구기호", "도서관명", "대출 가능 여부"]
 _EMPTY_DF = pd.DataFrame(columns=_COLUMNS)
+_MAX_WORKERS = 8  # 동시 HTTP 요청 상한; 서버 부하와 속도 사이의 균형점
 
 
 def _parse_books_from_page(soup: BeautifulSoup) -> list[dict[str, str]]:
@@ -24,6 +26,13 @@ def _parse_books_from_page(soup: BeautifulSoup) -> list[dict[str, str]]:
             continue
         title: str = input_tag["title"]
 
+        call_number_dt = next(
+            (dt for dt in li.find_all("dt", class_="title") if dt.get_text(strip=True) == "청구기호"),
+            None,
+        )
+        _call_dd = call_number_dt.find_next_sibling("dd") if call_number_dt else None
+        call_number: str = _call_dd.get_text(strip=True) if _call_dd else "정보 없음"
+
         library_tag = li.find("a", class_="prevAuto", href="#previewLocation")
         if library_tag:
             loan_status_tag = library_tag.find("span", class_="availableBtn")
@@ -37,7 +46,7 @@ def _parse_books_from_page(soup: BeautifulSoup) -> list[dict[str, str]]:
             library = "정보 없음"
             loan_status = "정보 없음"
 
-        books.append({"제목": title, "도서관명": library, "대출 가능 여부": loan_status})
+        books.append({"제목": title, "청구기호": call_number, "도서관명": library, "대출 가능 여부": loan_status})
     return books
 
 
@@ -78,7 +87,7 @@ def create_total_search_result(
 ) -> pd.DataFrame:
     """모든 키워드·도서관 조합으로 검색한 결과를 하나의 평면 DataFrame으로 반환한다.
 
-    반환 컬럼: 제목, 도서관명, 대출 가능 여부
+    반환 콜럼: 제목, 청구기호, 도서관명, 대출 가능 여부
     복수 키워드에서 동일 도서(제목+도서관명)가 중복되면 한 건만 유지한다.
     대출 가능 여부 필터는 적용하지 않는다 — 호출측에서 선택적으로 필터링한다.
     """
@@ -90,14 +99,16 @@ def create_total_search_result(
         library_codes = [library_codes]
     lib_codes: list[str | None] = [None] if library_codes is None else list(library_codes)
 
-    all_data = [
-        fetch_books(keyword, lib_code)
-        for lib_code in lib_codes
-        for keyword in keywords
-    ]
+    # Build flat argument sequences — same Cartesian order as before, so
+    # drop_duplicates keeps the same first-occurrence as the sequential version.
+    kw_seq = [kw for lib_code in lib_codes for kw in keywords]
+    lc_seq = [lib_code for lib_code in lib_codes for _ in keywords]
 
-    if not all_data:
+    if not kw_seq:
         return _EMPTY_DF.copy()
+
+    with ThreadPoolExecutor(max_workers=min(_MAX_WORKERS, len(kw_seq))) as pool:
+        all_data = list(pool.map(fetch_books, kw_seq, lc_seq))
 
     return (
         pd.concat(all_data, ignore_index=True)
